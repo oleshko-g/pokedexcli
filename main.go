@@ -58,24 +58,30 @@ func cleanInput(text string) []string {
 	return strings.Fields(t)
 }
 
-func main() {
-	scanner := bufio.NewScanner(os.Stdin)
+func processCommand(s string) error {
+	words := cleanInput(s)
+	if len(words) == 0 {
+		return nil
+	}
+	command, ok := commandRegistry[words[0]]
+	if !ok {
+		return commandUknown()
+	}
+	return command.callback()
+}
+
+func repl(r *bufio.Scanner) {
 	for {
 		fmt.Print("Pokedex > ")
-		scanner.Scan()
-		text := scanner.Text()
+		r.Scan()
+		text := r.Text()
 		if text == "" {
 			continue
 		}
-		words := cleanInput(text)
-		if len(words) == 0 {
-			continue
-		}
-		command, ok := commandRegistry[words[0]]
-		if !ok {
-			commandUknown()
-			continue
-		}
-		command.callback()
+		processCommand(text)
 	}
+}
+
+func main() {
+	repl(bufio.NewScanner(os.Stdin))
 }
