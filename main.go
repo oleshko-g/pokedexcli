@@ -2,9 +2,15 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
+)
+
+const (
+	locationAreaURL = "https://pokeapi.co/api/v2/location-area/"
 )
 
 type cliCommand struct {
@@ -13,7 +19,69 @@ type cliCommand struct {
 	callback    func() error
 }
 
+type config struct {
+	nextURL       *string
+	prevURL       *string
+	printConfig   bool
+	printResponse bool
+}
+
+func (c config) print() {
+	if !c.printConfig {
+		return
+	}
+
+	fmt.Println("")
+	fmt.Println("## Config")
+
+	if cfg.prevURL != nil {
+		fmt.Printf("prevURL: %#v\n", *(cfg.prevURL))
+	} else {
+		fmt.Printf("prevURL: %#v\n", cfg.prevURL)
+	}
+
+	if cfg.nextURL != nil {
+		fmt.Printf("nextURL: %#v\n", *(cfg.nextURL))
+	} else {
+		fmt.Printf("nextURL: %#v\n", cfg.nextURL)
+	}
+
+	fmt.Println("")
+}
+
+type locatonAreaResponse struct {
+	Locations []struct {
+		Name string `json:"name"`
+	} `json:"results"`
+	PreviousURL *string `json:"previous"`
+	NextURL     *string `json:"next"`
+}
+
+func (l *locatonAreaResponse) print() {
+	if !cfg.printResponse {
+		return
+	}
+
+	fmt.Println("")
+	fmt.Println("## Response")
+
+	if l.PreviousURL != nil {
+		fmt.Printf("PreviousURL: %#v\n", *(l.PreviousURL))
+	} else {
+		fmt.Printf("PreviousURL: %#v\n", l.PreviousURL)
+	}
+
+	if l.NextURL != nil {
+		fmt.Printf("NextURL: %#v\n", *(l.NextURL))
+	} else {
+		fmt.Printf("NextURL: %#v\n", l.NextURL)
+	}
+
+	fmt.Println("")
+}
+
 var commandRegistry map[string]cliCommand
+var cfg config
 
 func init() {
 	commandRegistry = map[string]cliCommand{
@@ -27,7 +95,23 @@ func init() {
 			description: "Displays a help message",
 			callback:    commandHelp,
 		},
+		"map": {
+			name:        "map",
+			description: "Displays names of 20 location next areas in the Pokemon world",
+			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Displays names of 20 location previous areas in the Pokemon world",
+			callback:    commandMapB,
+		},
 	}
+
+	s := locationAreaURL
+	cfg.nextURL = &s
+
+	cfg.printConfig = false
+	cfg.printResponse = false
 }
 
 func commandUknown() error {
@@ -38,6 +122,78 @@ func commandUknown() error {
 func commandExit() error {
 	fmt.Print("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
+	return nil
+}
+
+func decodeLocationAreaResponse(r *http.Response) (locatonAreaResponse, error) {
+	var l locatonAreaResponse
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&l); err != nil {
+		return l, err
+	}
+	return l, nil
+}
+
+func printLocations(l locatonAreaResponse) {
+	for _, v := range l.Locations {
+		fmt.Printf("%v\n", v.Name)
+	}
+}
+
+func commandMap() error {
+	if cfg.nextURL == nil {
+		fmt.Println("You're at the last page. Type \"mapb\" to go on the previous page")
+	}
+
+	cfg.print()
+	resp, err := http.Get(*cfg.nextURL)
+	if err != nil {
+		return err
+	}
+
+	l, err := decodeLocationAreaResponse(resp)
+	if err != nil {
+		return err
+	}
+	l.print()
+
+	printLocations(l)
+
+	cfg.prevURL = l.PreviousURL
+	cfg.nextURL = l.NextURL
+
+	cfg.print()
+
+	return nil
+}
+
+func commandMapB() error {
+	if cfg.prevURL == nil {
+		fmt.Println("You're at the first page. Type \"map\" to go on the next page")
+		return nil
+	}
+
+	cfg.print()
+
+	resp, err := http.Get(*cfg.prevURL)
+	if err != nil {
+		return err
+	}
+
+	l, err := decodeLocationAreaResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	l.print()
+
+	printLocations(l)
+
+	cfg.prevURL = l.PreviousURL
+	cfg.nextURL = l.NextURL
+
+	cfg.print()
+
 	return nil
 }
 
