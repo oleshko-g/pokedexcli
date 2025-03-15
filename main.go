@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/oleshko-g/pokedexcli/internal/pokecache"
 )
 
 const (
@@ -82,6 +85,7 @@ func (l locationAreaResponse) print() {
 
 var commandRegistry map[string]cliCommand
 var cfg config
+var cache = pokecache.NewCache()
 
 func init() {
 	commandRegistry = map[string]cliCommand{
@@ -121,19 +125,32 @@ func commandExit() error {
 	return nil
 }
 
-func decodeLocationAreaResponse(r *http.Response) (locationAreaResponse, error) {
-	var l locationAreaResponse
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&l); err != nil {
-		return l, err
-	}
-	return l, nil
-}
-
 func printLocations(l locationAreaResponse) {
 	for _, v := range l.Locations {
 		fmt.Printf("%v\n", v.Name)
 	}
+}
+
+func fetchLocationsData(url string) ([]byte, error) {
+	if val, ok := cache.Get(url); ok {
+		fmt.Println("cache hit")
+		return val, nil
+	}
+
+	fmt.Println("cache miss")
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	locationsData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	cache.Add(url, locationsData)
+
+	return locationsData, nil
 }
 
 func fetchAndPrintLocations(url string) error {
@@ -142,14 +159,13 @@ func fetchAndPrintLocations(url string) error {
 	}
 
 	cfg.print()
-	resp, err := http.Get(url)
+	ld, err := fetchLocationsData(url)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	l, err := decodeLocationAreaResponse(resp)
-	if err != nil {
+	var l locationAreaResponse
+	if err := json.Unmarshal(ld, &l); err != nil {
 		return err
 	}
 	l.print()
