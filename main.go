@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/oleshko-g/pokedexcli/internal/pokecache"
 )
@@ -85,7 +86,7 @@ func (l locationAreaResponse) print() {
 
 var commandRegistry map[string]cliCommand
 var cfg config
-var cache = pokecache.NewCache()
+var cache = pokecache.NewCache(5 * time.Second)
 
 func init() {
 	commandRegistry = map[string]cliCommand{

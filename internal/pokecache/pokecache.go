@@ -31,9 +31,24 @@ func (c *Cache) Get(key string) (val []byte, ok bool) {
 	return cacheEntry.val, ok
 }
 
-func NewCache() Cache {
-	return Cache{
+func (c *Cache) reapLoop(t *time.Ticker, interval time.Duration) {
+	for tick := range t.C {
+		c.mu.Lock()
+		for key, entry := range c.entries {
+			if tick.Sub(entry.createdAt) > interval {
+				delete(c.entries, key)
+			}
+		}
+		c.mu.Unlock()
+	}
+}
+
+func NewCache(interval time.Duration) *Cache {
+	ticker := time.NewTicker(interval)
+	cache := &Cache{
 		mu:      sync.Mutex{},
 		entries: make(map[string]cacheEntry),
 	}
+	go cache.reapLoop(ticker, interval)
+	return cache
 }
