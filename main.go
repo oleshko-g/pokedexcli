@@ -132,7 +132,7 @@ func printLocations(l locationAreaResponse) {
 	}
 }
 
-func fetchLocationsData(url string) ([]byte, error) {
+func fetchData(url string) ([]byte, error) {
 	if val, ok := cache.Get(url); ok {
 		return val, nil
 	}
@@ -143,13 +143,13 @@ func fetchLocationsData(url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	locationsData, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	cache.Add(url, locationsData)
+	cache.Add(url, data)
 
-	return locationsData, nil
+	return data, nil
 }
 
 func fetchAndPrintLocations(url string) error {
@@ -158,7 +158,7 @@ func fetchAndPrintLocations(url string) error {
 	}
 
 	cfg.print()
-	ld, err := fetchLocationsData(url)
+	ld, err := fetchData(url)
 	if err != nil {
 		return err
 	}
