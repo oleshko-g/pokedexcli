@@ -134,11 +134,9 @@ func printLocations(l locationAreaResponse) {
 
 func fetchLocationsData(url string) ([]byte, error) {
 	if val, ok := cache.Get(url); ok {
-		fmt.Println("cache hit")
 		return val, nil
 	}
 
-	fmt.Println("cache miss")
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
