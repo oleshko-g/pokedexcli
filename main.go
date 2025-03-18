@@ -22,7 +22,7 @@ const (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(...string) error
 }
 
 type config struct {
@@ -120,7 +120,7 @@ func commandUknown() error {
 	return fmt.Errorf("unknown command")
 }
 
-func commandExit() error {
+func commandExit(...string) error {
 	fmt.Print("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
@@ -179,7 +179,7 @@ func fetchAndPrintLocations(url string) error {
 	return nil
 }
 
-func commandMap() error {
+func commandMap(...string) error {
 	if cfg.nextURL == nil {
 		fmt.Println("You're at the last page. Type \"mapb\" to go on the previous page")
 		return nil
@@ -188,7 +188,7 @@ func commandMap() error {
 	return fetchAndPrintLocations(*cfg.nextURL)
 }
 
-func commandMapB() error {
+func commandMapB(...string) error {
 	if cfg.prevURL == nil {
 		fmt.Println("You're at the first page. Type \"map\" to go on the next page")
 		return nil
@@ -197,7 +197,7 @@ func commandMapB() error {
 	return fetchAndPrintLocations(*cfg.prevURL)
 }
 
-func commandHelp() error {
+func commandHelp(...string) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println()
@@ -222,6 +222,9 @@ func processCommand(s string) error {
 	command, ok := commandRegistry[words[0]]
 	if !ok {
 		return commandUknown()
+	}
+	if len(words) > 1 {
+		return command.callback(words[1])
 	}
 	return command.callback()
 }
