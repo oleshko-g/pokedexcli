@@ -61,6 +61,15 @@ type locationAreaResponse struct {
 	NextURL     *string `json:"next"`
 }
 
+type locationAreaByNameResponse struct {
+	Name              string `json:"name"`
+	PokemonEncounters []struct {
+		Pokemon struct {
+			Name string `json:"name"`
+		} `json:"pokemon"`
+	} `json:"pokemon_encounters"`
+}
+
 func (l locationAreaResponse) print() {
 	if !printResponse {
 		return
@@ -110,6 +119,11 @@ func init() {
 			description: "Displays names of 20 location previous areas in the Pokemon world",
 			callback:    commandMapB,
 		},
+		"explore": {
+			name:        "expore",
+			description: "Displays pokemons which can be encountered in a location area",
+			callback:    commandExpore,
+		},
 	}
 
 	s := locationAreaURL
@@ -129,6 +143,13 @@ func commandExit(...string) error {
 func printLocations(l locationAreaResponse) {
 	for _, v := range l.Locations {
 		fmt.Printf("%v\n", v.Name)
+	}
+}
+
+func printPokemons(ln locationAreaByNameResponse) {
+	fmt.Println("Found Pokemon:")
+	for _, v := range ln.PokemonEncounters {
+		fmt.Printf("- %v\n", v.Pokemon.Name)
 	}
 }
 
@@ -186,6 +207,25 @@ func commandMap(...string) error {
 	}
 
 	return fetchAndPrintLocations(*cfg.nextURL)
+}
+
+func commandExpore(s ...string) error {
+	url := locationAreaURL + s[0]
+	data, err := fetchData(url)
+	if err != nil {
+		return err
+	}
+
+	var ln locationAreaByNameResponse
+	err = json.Unmarshal(data, &ln)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Exploring \"%s\" location area...\n", ln.Name)
+	printPokemons(ln)
+
+	return nil
 }
 
 func commandMapB(...string) error {
