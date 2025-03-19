@@ -156,6 +156,11 @@ func init() {
 			description: "Inspects a caught pokemn by its name",
 			callback:    commandInspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Lists caught pokemon",
+			callback:    commandPokedex,
+		},
 	}
 
 	s := locationAreaURL
@@ -291,7 +296,7 @@ func commandCatch(pokemonName ...string) error {
 		return nil
 	}
 	pokedex[p.Name] = p
-	fmt.Printf("%s was caught!\n", p.Name)
+	fmt.Printf("%s was caught!\nYou may now inspect it with the inspect command.\n", p.Name)
 
 	return nil
 }
@@ -317,6 +322,19 @@ func commandInspect(pokemonName ...string) error {
 	fmt.Println("Types:")
 	for _, v := range pokemon.Types {
 		fmt.Printf("  - %s\n", v.Type.Name)
+	}
+	return nil
+}
+
+func commandPokedex(...string) error {
+	if len(pokedex) == 0 {
+		fmt.Println("You haven't caught any pokemon yet")
+		return nil
+	}
+
+	fmt.Println("Your Pokedex:")
+	for pokemon := range pokedex {
+		fmt.Printf("  - %s\n", pokemon)
 	}
 	return nil
 }
