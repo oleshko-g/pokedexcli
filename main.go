@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -75,6 +76,19 @@ type locationAreaByNameResponse struct {
 type Pokemon struct {
 	Name           string `json:"name"`
 	BaseExperience int    `json:"base_experience"`
+	Height         int    `json:"height"`
+	Weight         int    `json:"weight"`
+	Types          []struct {
+		Type struct {
+			Name string `json:"name"`
+		} `json:"type"`
+	} `json:"types"`
+	Stats []struct {
+		BaseStat int `json:"base_stat"`
+		Stat     struct {
+			Name string `json:"name"`
+		} `json:"stat"`
+	} `json:"stats"`
 }
 
 func (l locationAreaResponse) print() {
@@ -136,6 +150,11 @@ func init() {
 			name:        "catch",
 			description: "Tries to catch a named pokemon",
 			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Inspects a caught pokemn by its name",
+			callback:    commandInspect,
 		},
 	}
 
@@ -274,6 +293,31 @@ func commandCatch(pokemonName ...string) error {
 	pokedex[p.Name] = p
 	fmt.Printf("%s was caught!\n", p.Name)
 
+	return nil
+}
+
+func printField(fieldName string, fieldValue string) {
+	fmt.Printf("%s: %v\n", fieldName, fieldValue)
+}
+
+func commandInspect(pokemonName ...string) error {
+	pokemon, ok := pokedex[pokemonName[0]]
+	if !ok {
+		fmt.Printf("You havn't caught %s yet\n", pokemonName[0])
+		return nil
+	}
+	printField("Name", pokemon.Name)
+	printField("Height", fmt.Sprintf("%d", pokemon.Height))
+	printField("Weight", fmt.Sprintf("%d", pokemon.Weight))
+	fmt.Println("Stats:")
+	for _, v := range pokemon.Stats {
+		fmt.Print("  - ")
+		printField(v.Stat.Name, strconv.Itoa(v.BaseStat))
+	}
+	fmt.Println("Types:")
+	for _, v := range pokemon.Types {
+		fmt.Printf("  - %s\n", v.Type.Name)
+	}
 	return nil
 }
 
