@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 const (
 	locationAreaURL = "https://pokeapi.co/api/v2/location-area/"
+	pokemonURL      = "https://pokeapi.co/api/v2/pokemon/"
 	printConfig     = true
 	printResponse   = true
 )
@@ -70,6 +72,11 @@ type locationAreaByNameResponse struct {
 	} `json:"pokemon_encounters"`
 }
 
+type Pokemon struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+}
+
 func (l locationAreaResponse) print() {
 	if !printResponse {
 		return
@@ -96,6 +103,7 @@ func (l locationAreaResponse) print() {
 var commandRegistry map[string]cliCommand
 var cfg config
 var cache = pokecache.NewCache(5 * time.Second)
+var pokedex = make(map[string]Pokemon)
 
 func init() {
 	commandRegistry = map[string]cliCommand{
@@ -123,6 +131,11 @@ func init() {
 			name:        "expore",
 			description: "Displays pokemons which can be encountered in a location area",
 			callback:    commandExpore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Tries to catch a named pokemon",
+			callback:    commandCatch,
 		},
 	}
 
@@ -235,6 +248,33 @@ func commandMapB(...string) error {
 	}
 
 	return fetchAndPrintLocations(*cfg.prevURL)
+}
+
+func commandCatch(pokemonName ...string) error {
+	if pokemonName[0] == "" || pokemonName == nil {
+		return fmt.Errorf("pokemon name is empty")
+	}
+	data, err := fetchData(pokemonURL + pokemonName[0])
+	if err != nil {
+		return err
+	}
+
+	var p Pokemon
+	err = json.Unmarshal(data, &p)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", p.Name)
+	catchChance := rand.Int()
+	if catchChance < p.BaseExperience {
+		fmt.Printf("%s escaped!\n", p.Name)
+		return nil
+	}
+	pokedex[p.Name] = p
+	fmt.Printf("%s was caught!\n", p.Name)
+
+	return nil
 }
 
 func commandHelp(...string) error {
